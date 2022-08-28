@@ -289,6 +289,8 @@ def discriminator_cwgan():
     img = Input(img_size)
     label = Input((1,), dtype='int32')
 
+    input_size = 4*(target_size//64)
+
     x = Conv2D(64, kernel_size=(4, 4), strides=(2, 2),
                padding='same', kernel_initializer=init)(img)
     # x = LayerNormalization()(x) # It is not suggested to use BN in
@@ -317,7 +319,7 @@ def discriminator_cwgan():
     x = Flatten()(x)
 
     le = Flatten()(Embedding(n_classes, 512)(label))
-    le = Dense(4 * 4 * 256)(le)
+    le = Dense(input_size * input_size * 256)(le)
     le = LeakyReLU(0.2)(le)
     x_y = multiply([x, le])
     x_y = Dense(512)(x_y)
@@ -510,12 +512,14 @@ def build_discriminator(encoder):
     label = Input((1,), dtype='int32')
     img = Input(img_size)
 
+    input_size = 4*(target_size//64)
+
     inter_output_model = Model(
         inputs=encoder.input, outputs=encoder.layers[-3].output)
     x = inter_output_model(img)
 
     le = Flatten()(Embedding(n_classes, 512)(label))
-    le = Dense(4 * 4 * 256)(le)
+    le = Dense(input_size * input_size * 256)(le)
     le = LeakyReLU(0.2)(le)
     x_y = multiply([x, le])
     x_y = Dense(512)(x_y)
