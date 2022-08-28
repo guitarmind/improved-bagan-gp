@@ -16,17 +16,21 @@ from tensorflow.keras.optimizers import Adam
 from sklearn.model_selection import train_test_split
 
 target_size = 128
-autoencoder_epochs = 300
+autoencoder_epochs = 500
+# autoencoder_epochs = 300
 # autoencoder_epochs = 30
 autoencoder_batch_size = 128
 
 # GAN_LEARNING_STEPS = 50
 # GAN_epochs = 2
-GAN_LEARNING_STEPS = 500
-GAN_epochs = 10
+GAN_LEARNING_STEPS = 1000
+GAN_epochs = 50
+# GAN_LEARNING_STEPS = 500
+# GAN_epochs = 10
 GAN_batch_size = 128
 
-eval_step_interval = 5
+eval_step_interval = 10
+# eval_step_interval = 5
 
 # %% --------------------------------------- Fix Seeds -------------------
 SEED = 42
