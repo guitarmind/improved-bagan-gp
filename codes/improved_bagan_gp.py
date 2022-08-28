@@ -566,9 +566,9 @@ def plt_img(generator, epoch):
         # display original
         ax = plt.subplot(n+1, n, i + 1)
         if channel == 3:
-            plt.imshow(x_real[y_test == i][4].reshape(64, 64, channel))
+            plt.imshow(x_real[y_test == i][4].reshape(target_size, target_size, channel))
         else:
-            plt.imshow(x_real[y_test == i][4].reshape(64, 64))
+            plt.imshow(x_real[y_test == i][4].reshape(target_size, target_size))
             plt.gray()
         ax.get_xaxis().set_visible(False)
         ax.get_yaxis().set_visible(False)
@@ -578,9 +578,9 @@ def plt_img(generator, epoch):
             # display generation
             ax = plt.subplot(n+1, n, (i+1)*n + 1 + c)
             if channel == 3:
-                plt.imshow(decoded_imgs[i].reshape(64, 64, channel))
+                plt.imshow(decoded_imgs[i].reshape(target_size, target_size, channel))
             else:
-                plt.imshow(decoded_imgs[i].reshape(64, 64))
+                plt.imshow(decoded_imgs[i].reshape(target_size, target_size))
                 plt.gray()
             ax.get_xaxis().set_visible(False)
             ax.get_yaxis().set_visible(False)
