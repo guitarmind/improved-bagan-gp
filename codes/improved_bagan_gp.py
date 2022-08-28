@@ -1,4 +1,4 @@
-# %% --------------------------------------- Load Packages -------------------------------------------------------------
+# %% --------------------------------------- Load Packages ---------------
 import os
 import random
 import cv2
@@ -15,8 +15,15 @@ from tensorflow.keras.initializers import glorot_normal
 from tensorflow.keras.optimizers import Adam
 from sklearn.model_selection import train_test_split
 
+target_size = 128
+autoencoder_epochs = 30
+autoencoder_batch_size = 128
 
-# %% --------------------------------------- Fix Seeds -----------------------------------------------------------------
+GAN_LEARNING_STEPS = 50
+GAN_epochs = 2
+GAN_batch_size = 128
+
+# %% --------------------------------------- Fix Seeds -------------------
 SEED = 42
 os.environ['PYTHONHASHSEED'] = str(SEED)
 random.seed(SEED)
@@ -24,13 +31,16 @@ np.random.seed(SEED)
 tf.random.set_seed(SEED)
 weight_init = glorot_normal(seed=SEED)
 
-# %% ---------------------------------- Data Preparation ---------------------------------------------------------------
+# %% ---------------------------------- Data Preparation -----------------
+
+
 def change_image_shape(images):
     shape_tuple = images.shape
     if len(shape_tuple) == 3:
         images = images.reshape(-1, shape_tuple[-1], shape_tuple[-1], 1)
     elif shape_tuple == 4 and shape_tuple[-1] > 3:
-        images = images.reshape(-1, shape_tuple[-1], shape_tuple[-1], shape_tuple[1])
+        images = images.reshape(-1,
+                                shape_tuple[-1], shape_tuple[-1], shape_tuple[1])
     return images
 
 ######################## MNIST / CIFAR ##########################
@@ -63,12 +73,15 @@ images = change_image_shape(images)
 channel = images.shape[-1]
 
 # to 64 x 64 x channel
-real = np.ndarray(shape=(images.shape[0], 64, 64, channel))
+real = np.ndarray(shape=(images.shape[0], target_size, target_size, channel))
 for i in range(images.shape[0]):
-    real[i] = cv2.resize(images[i], (64, 64)).reshape((64, 64, channel))
+    real[i] = cv2.resize(images[i], (target_size, target_size)).reshape(
+        (target_size, target_size, channel))
 
-# Train test split, for autoencoder (actually, this step is redundant if we already have test set)
-x_train, x_test, y_train, y_test = train_test_split(real, labels, test_size=0.3, shuffle=True, random_state=42)
+# Train test split, for autoencoder (actually, this step is redundant if
+# we already have test set)
+x_train, x_test, y_train, y_test = train_test_split(
+    real, labels, test_size=0.3, shuffle=True, random_state=42)
 
 # It is suggested to use [-1, 1] input for GAN training
 x_train = (x_train.astype('float32') - 127.5) / 127.5
@@ -79,15 +92,17 @@ img_size = x_train[0].shape
 # Get number of classes
 n_classes = len(np.unique(y_train))
 
-# %% ---------------------------------- Hyperparameters ----------------------------------------------------------------
+# %% ---------------------------------- Hyperparameters ------------------
 
 optimizer = Adam(lr=0.0002, beta_1=0.5, beta_2=0.9)
-latent_dim=128
+latent_dim = 128
 # trainRatio === times(Train D) / times(Train G)
 trainRatio = 5
 
-# %% ---------------------------------- Models Setup -------------------------------------------------------------------
+# %% ---------------------------------- Models Setup ---------------------
 # Build Generator/Decoder
+
+
 def decoder():
     # weight initialization
     init = RandomNormal(stddev=0.02)
@@ -97,10 +112,10 @@ def decoder():
     x = Dense(4*4*256)(noise_le)
     x = LeakyReLU(alpha=0.2)(x)
 
-    ## Size: 4 x 4 x 256
+    # Size: 4 x 4 x 256
     x = Reshape((4, 4, 256))(x)
 
-    ## Size: 8 x 8 x 128
+    # Size: 8 x 8 x 128
     x = Conv2DTranspose(filters=128,
                         kernel_size=(4, 4),
                         strides=(2, 2),
@@ -109,46 +124,55 @@ def decoder():
     x = BatchNormalization()(x)
     x = LeakyReLU(0.2)(x)
 
-    ## Size: 16 x 16 x 128
-    x = Conv2DTranspose(128, (4, 4), strides=(2, 2), padding='same', kernel_initializer=init)(x)
+    # Size: 16 x 16 x 128
+    x = Conv2DTranspose(128, (4, 4), strides=(
+        2, 2), padding='same', kernel_initializer=init)(x)
     x = BatchNormalization()(x)
     x = LeakyReLU(0.2)(x)
 
-    ## Size: 32 x 32 x 64
-    x = Conv2DTranspose(64, (4, 4), strides=(2, 2), padding='same', kernel_initializer=init)(x)
+    # Size: 32 x 32 x 64
+    x = Conv2DTranspose(64, (4, 4), strides=(
+        2, 2), padding='same', kernel_initializer=init)(x)
     x = BatchNormalization()(x)
     x = LeakyReLU(0.2)(x)
 
-    ## Size: 64 x 64 x 3
-    generated = Conv2DTranspose(channel, (4, 4), strides=(2, 2), padding='same', activation='tanh', kernel_initializer=init)(x)
-
+    # Size: 64 x 64 x 3
+    generated = Conv2DTranspose(channel, (4, 4), strides=(
+        2, 2), padding='same', activation='tanh', kernel_initializer=init)(x)
 
     generator = Model(inputs=noise_le, outputs=generated)
     return generator
 
 # Build Encoder
+
+
 def encoder():
     # weight initialization
     init = RandomNormal(stddev=0.02)
 
     img = Input(img_size)
 
-    x = Conv2D(64, kernel_size=(4, 4), strides=(2, 2), padding='same', kernel_initializer=init)(img)
-    # x = LayerNormalization()(x) # It is not suggested to use BN in Discriminator of WGAN
+    x = Conv2D(64, kernel_size=(4, 4), strides=(2, 2),
+               padding='same', kernel_initializer=init)(img)
+    # x = LayerNormalization()(x) # It is not suggested to use BN in
+    # Discriminator of WGAN
     x = LeakyReLU(0.2)(x)
     # x = Dropout(0.3)(x)
 
-    x = Conv2D(128, (4, 4), strides=(2, 2), padding='same', kernel_initializer=init)(x)
+    x = Conv2D(128, (4, 4), strides=(2, 2),
+               padding='same', kernel_initializer=init)(x)
     # x = LayerNormalization()(x)
     x = LeakyReLU(0.2)(x)
     # x = Dropout(0.3)(x)
 
-    x = Conv2D(128, (4, 4), strides=(2, 2), padding='same', kernel_initializer=init)(x)
+    x = Conv2D(128, (4, 4), strides=(2, 2),
+               padding='same', kernel_initializer=init)(x)
     # x = LayerNormalization()(x)
     x = LeakyReLU(0.2)(x)
     # x = Dropout(0.3)(x)
 
-    x = Conv2D(256, (4, 4), strides=(2, 2), padding='same', kernel_initializer=init)(x)
+    x = Conv2D(256, (4, 4), strides=(2, 2),
+               padding='same', kernel_initializer=init)(x)
     # x = LayerNormalization()(x)
     x = LeakyReLU(0.2)(x)
     # x = Dropout(0.3)(x)
@@ -163,6 +187,8 @@ def encoder():
     return model
 
 # Build Embedding model
+
+
 def embedding_labeled_latent():
     # # weight initialization
     # init = RandomNormal(stddev=0.02)
@@ -184,6 +210,8 @@ def embedding_labeled_latent():
     return model
 
 # Build Autoencoder
+
+
 def autoencoder_trainer(encoder, decoder, embedding):
 
     label = Input((1,), dtype='int32')
@@ -204,8 +232,8 @@ em = embedding_labeled_latent()
 ae = autoencoder_trainer(en, de, em)
 
 ae.fit([x_train, y_train], x_train,
-       epochs=30,
-       batch_size=128,
+       epochs=autoencoder_epochs,
+       batch_size=autoencoder_batch_size,
        shuffle=True,
        validation_data=([x_test, y_test], x_test))
 
@@ -219,24 +247,24 @@ for i in range(n):
     # display original
     ax = plt.subplot(2, n, i+1)
     if channel == 3:
-        plt.imshow(x_real[y_test==i][0].reshape(64, 64, channel))
+        plt.imshow(x_real[y_test == i][0].reshape(64, 64, channel))
     else:
-        plt.imshow(x_real[y_test==i][0].reshape(64, 64))
+        plt.imshow(x_real[y_test == i][0].reshape(64, 64))
         plt.gray()
     ax.get_xaxis().set_visible(False)
     ax.get_yaxis().set_visible(False)
     # display reconstruction
     ax = plt.subplot(2, n, i + n + 1)
     if channel == 3:
-        plt.imshow(decoded_imgs[y_test==i][0].reshape(64, 64, channel))
+        plt.imshow(decoded_imgs[y_test == i][0].reshape(64, 64, channel))
     else:
-        plt.imshow(decoded_imgs[y_test==i][0].reshape(64, 64))
+        plt.imshow(decoded_imgs[y_test == i][0].reshape(64, 64))
         plt.gray()
     ax.get_xaxis().set_visible(False)
     ax.get_yaxis().set_visible(False)
 plt.show()
 
-####################### Use the pre-trained Autoencoder #########################
+####################### Use the pre-trained Autoencoder ##################
 # from tensorflow.keras.models import load_model
 # en = load_model('bagan_gp_encoder.h5')
 # em = load_model('bagan_gp_embedding.h5')
@@ -244,6 +272,8 @@ plt.show()
 
 # Build Discriminator without inheriting the pre-trained Encoder
 # Similar to cWGAN
+
+
 def discriminator_cwgan():
     # weight initialization
     init = RandomNormal(stddev=0.02)
@@ -251,23 +281,27 @@ def discriminator_cwgan():
     img = Input(img_size)
     label = Input((1,), dtype='int32')
 
-
-    x = Conv2D(64, kernel_size=(4, 4), strides=(2, 2), padding='same', kernel_initializer=init)(img)
-    # x = LayerNormalization()(x) # It is not suggested to use BN in Discriminator of WGAN
+    x = Conv2D(64, kernel_size=(4, 4), strides=(2, 2),
+               padding='same', kernel_initializer=init)(img)
+    # x = LayerNormalization()(x) # It is not suggested to use BN in
+    # Discriminator of WGAN
     x = LeakyReLU(0.2)(x)
     # x = Dropout(0.3)(x)
 
-    x = Conv2D(128, (4, 4), strides=(2, 2), padding='same', kernel_initializer=init)(x)
+    x = Conv2D(128, (4, 4), strides=(2, 2),
+               padding='same', kernel_initializer=init)(x)
     # x = LayerNormalization()(x)
     x = LeakyReLU(0.2)(x)
     # x = Dropout(0.3)(x)
 
-    x = Conv2D(128, (4, 4), strides=(2, 2), padding='same', kernel_initializer=init)(x)
+    x = Conv2D(128, (4, 4), strides=(2, 2),
+               padding='same', kernel_initializer=init)(x)
     # x = LayerNormalization()(x)
     x = LeakyReLU(0.2)(x)
     # x = Dropout(0.3)(x)
 
-    x = Conv2D(256, (4, 4), strides=(2, 2), padding='same', kernel_initializer=init)(x)
+    x = Conv2D(256, (4, 4), strides=(2, 2),
+               padding='same', kernel_initializer=init)(x)
     # x = LayerNormalization()(x)
     x = LeakyReLU(0.2)(x)
     # x = Dropout(0.3)(x)
@@ -286,10 +320,13 @@ def discriminator_cwgan():
 
     return model
 
-# %% ----------------------------------- BAGAN-GP Part -----------------------------------------------------------------
+# %% ----------------------------------- BAGAN-GP Part -------------------
 # Refer to the WGAN-GP Architecture. https://github.com/keras-team/keras-io/blob/master/examples/generative/wgan_gp.py
 # Build our BAGAN-GP
+
+
 class BAGAN_GP(Model):
+
     def __init__(
         self,
         discriminator,
@@ -343,7 +380,7 @@ class BAGAN_GP(Model):
         # Get the batch size
         batch_size = tf.shape(real_images)[0]
 
-        ########################### Train the Discriminator ###########################
+        ########################### Train the Discriminator ###################
         # For each batch, we are going to perform cwgan-like process
         for i in range(self.train_ratio):
             # Get the latent vector
@@ -354,13 +391,17 @@ class BAGAN_GP(Model):
             wrong_labels = tf.random.uniform((batch_size,), 0, n_classes)
             with tf.GradientTape() as tape:
                 # Generate fake images from the latent vector
-                fake_images = self.generator([random_latent_vectors, fake_labels], training=True)
+                fake_images = self.generator(
+                    [random_latent_vectors, fake_labels], training=True)
                 # Get the logits for the fake images
-                fake_logits = self.discriminator([fake_images, fake_labels], training=True)
+                fake_logits = self.discriminator(
+                    [fake_images, fake_labels], training=True)
                 # Get the logits for real images
-                real_logits = self.discriminator([real_images, labels], training=True)
+                real_logits = self.discriminator(
+                    [real_images, labels], training=True)
                 # Get the logits for wrong label classification
-                wrong_label_logits = self.discriminator([real_images, wrong_labels], training=True)
+                wrong_label_logits = self.discriminator(
+                    [real_images, wrong_labels], training=True)
 
                 # Calculate discriminator loss using fake and real logits
                 d_cost = self.d_loss_fn(real_logits=real_logits, fake_logits=fake_logits,
@@ -368,31 +409,38 @@ class BAGAN_GP(Model):
                                         )
 
                 # Calculate the gradient penalty
-                gp = self.gradient_penalty(batch_size, real_images, fake_images, labels)
+                gp = self.gradient_penalty(
+                    batch_size, real_images, fake_images, labels)
                 # Add the gradient penalty to the original discriminator loss
                 d_loss = d_cost + gp * self.gp_weight
 
             # Get the gradients w.r.t the discriminator loss
-            d_gradient = tape.gradient(d_loss, self.discriminator.trainable_variables)
-            # Update the weights of the discriminator using the discriminator optimizer
+            d_gradient = tape.gradient(
+                d_loss, self.discriminator.trainable_variables)
+            # Update the weights of the discriminator using the discriminator
+            # optimizer
             self.d_optimizer.apply_gradients(
                 zip(d_gradient, self.discriminator.trainable_variables)
             )
 
-        ########################### Train the Generator ###########################
+        ########################### Train the Generator #######################
         # Get the latent vector
-        random_latent_vectors = tf.random.normal(shape=(batch_size, self.latent_dim))
+        random_latent_vectors = tf.random.normal(
+            shape=(batch_size, self.latent_dim))
         fake_labels = tf.random.uniform((batch_size,), 0, n_classes)
         with tf.GradientTape() as tape:
             # Generate fake images using the generator
-            generated_images = self.generator([random_latent_vectors, fake_labels], training=True)
+            generated_images = self.generator(
+                [random_latent_vectors, fake_labels], training=True)
             # Get the discriminator logits for fake images
-            gen_img_logits = self.discriminator([generated_images, fake_labels], training=True)
+            gen_img_logits = self.discriminator(
+                [generated_images, fake_labels], training=True)
             # Calculate the generator loss
             g_loss = self.g_loss_fn(gen_img_logits)
 
         # Get the gradients w.r.t the generator loss
-        gen_gradient = tape.gradient(g_loss, self.generator.trainable_variables)
+        gen_gradient = tape.gradient(
+            g_loss, self.generator.trainable_variables)
         # Update the weights of the generator using the generator optimizer
         self.g_optimizer.apply_gradients(
             zip(gen_gradient, self.generator.trainable_variables)
@@ -423,12 +471,16 @@ def discriminator_loss(real_logits, fake_logits, wrong_label_logits):
     return wrong_label_loss + fake_loss + real_loss
 
 # Define the loss functions to be used for generator
+
+
 def generator_loss(fake_logits):
     fake_loss = tf.reduce_mean(
         tf.nn.sigmoid_cross_entropy_with_logits(logits=fake_logits, labels=tf.ones_like(fake_logits)))
     return fake_loss
 
 # build generator with pretrained decoder and embedding
+
+
 def generator_label(embedding, decoder):
     # # Embedding model needs to be trained along with GAN training
     # embedding.trainable = False
@@ -443,12 +495,15 @@ def generator_label(embedding, decoder):
     return model
 
 # Build discriminator with pre-trained Encoder
+
+
 def build_discriminator(encoder):
 
     label = Input((1,), dtype='int32')
     img = Input(img_size)
 
-    inter_output_model = Model(inputs=encoder.input, outputs=encoder.layers[-3].output)
+    inter_output_model = Model(
+        inputs=encoder.input, outputs=encoder.layers[-3].output)
     x = inter_output_model(img)
 
     le = Flatten()(Embedding(n_classes, 512)(label))
@@ -464,7 +519,7 @@ def build_discriminator(encoder):
     return model
 
 
-# %% ----------------------------------- Compile Models ----------------------------------------------------------------
+# %% ----------------------------------- Compile Models ------------------
 # d_model = build_discriminator(en)  # initialized with Encoder
 d_model = discriminator_cwgan()  # without initialization
 g_model = generator_label(em, de)  # initialized with Decoder and Embedding
@@ -485,7 +540,7 @@ bagan_gp.compile(
 )
 
 
-# %% ----------------------------------- Start Training ----------------------------------------------------------------
+# %% ----------------------------------- Start Training ------------------
 # Plot/save generated images through training
 def plt_img(generator, epoch):
     np.random.seed(42)
@@ -499,7 +554,7 @@ def plt_img(generator, epoch):
         # display original
         ax = plt.subplot(n+1, n, i + 1)
         if channel == 3:
-            plt.imshow(x_real[y_test==i][4].reshape(64, 64, channel))
+            plt.imshow(x_real[y_test == i][4].reshape(64, 64, channel))
         else:
             plt.imshow(x_real[y_test == i][4].reshape(64, 64))
             plt.gray()
@@ -529,13 +584,14 @@ d_loss_history = []
 g_loss_history = []
 
 ############################# Start training #############################
-LEARNING_STEPS = 50
+LEARNING_STEPS = GAN_LEARNING_STEPS
 for learning_step in range(LEARNING_STEPS):
     print('LEARNING STEP # ', learning_step + 1, '-' * 50)
-    bagan_gp.fit(x_train, y_train, batch_size=128, epochs=2)
+    bagan_gp.fit(x_train, y_train, batch_size=GAN_batch_size,
+                 epochs=GAN_batch_size)
     d_loss_history += bagan_gp.history.history['d_loss']
     g_loss_history += bagan_gp.history.history['g_loss']
-    if (learning_step+1)%1 == 0:
+    if (learning_step+1) % 1 == 0:
         plt_img(bagan_gp.generator, learning_step)
 
 ############################# Display performance #############################
