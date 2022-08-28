@@ -16,12 +16,17 @@ from tensorflow.keras.optimizers import Adam
 from sklearn.model_selection import train_test_split
 
 target_size = 128
-autoencoder_epochs = 30
+autoencoder_epochs = 100
+# autoencoder_epochs = 30
 autoencoder_batch_size = 128
 
-GAN_LEARNING_STEPS = 50
-GAN_epochs = 2
+# GAN_LEARNING_STEPS = 50
+# GAN_epochs = 2
+GAN_LEARNING_STEPS = 5000
+GAN_epochs = 50
 GAN_batch_size = 128
+
+eval_step_interval = 100
 
 # %% --------------------------------------- Fix Seeds -------------------
 SEED = 42
@@ -603,7 +608,7 @@ for learning_step in range(LEARNING_STEPS):
                  epochs=GAN_epochs)
     d_loss_history += bagan_gp.history.history['d_loss']
     g_loss_history += bagan_gp.history.history['g_loss']
-    if (learning_step+1) % 1 == 0:
+    if (learning_step+1) % eval_step_interval == 0:
         plt_img(bagan_gp.generator, learning_step)
 
 ############################# Display performance #############################
