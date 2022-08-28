@@ -16,17 +16,17 @@ from tensorflow.keras.optimizers import Adam
 from sklearn.model_selection import train_test_split
 
 target_size = 128
-autoencoder_epochs = 100
+autoencoder_epochs = 300
 # autoencoder_epochs = 30
 autoencoder_batch_size = 128
 
 # GAN_LEARNING_STEPS = 50
 # GAN_epochs = 2
-GAN_LEARNING_STEPS = 5000
-GAN_epochs = 50
+GAN_LEARNING_STEPS = 500
+GAN_epochs = 10
 GAN_batch_size = 128
 
-eval_step_interval = 100
+eval_step_interval = 5
 
 # %% --------------------------------------- Fix Seeds -------------------
 SEED = 42
@@ -246,6 +246,9 @@ ae.fit([x_train, y_train], x_train,
        batch_size=autoencoder_batch_size,
        shuffle=True,
        validation_data=([x_test, y_test], x_test))
+
+# Save trained autoencoder model
+ae.save("autoencoder.h5")
 
 # Show results of reconstructed images
 decoded_imgs = ae.predict([x_test, y_test])
@@ -571,9 +574,11 @@ def plt_img(generator, epoch):
         # display original
         ax = plt.subplot(n+1, n, i + 1)
         if channel == 3:
-            plt.imshow(x_real[y_test == i][4].reshape(target_size, target_size, channel))
+            plt.imshow(x_real[y_test == i][4].reshape(
+                target_size, target_size, channel))
         else:
-            plt.imshow(x_real[y_test == i][4].reshape(target_size, target_size))
+            plt.imshow(x_real[y_test == i][4].reshape(
+                target_size, target_size))
             plt.gray()
         ax.get_xaxis().set_visible(False)
         ax.get_yaxis().set_visible(False)
@@ -583,7 +588,8 @@ def plt_img(generator, epoch):
             # display generation
             ax = plt.subplot(n+1, n, (i+1)*n + 1 + c)
             if channel == 3:
-                plt.imshow(decoded_imgs[i].reshape(target_size, target_size, channel))
+                plt.imshow(decoded_imgs[i].reshape(
+                    target_size, target_size, channel))
             else:
                 plt.imshow(decoded_imgs[i].reshape(target_size, target_size))
                 plt.gray()
@@ -610,6 +616,10 @@ for learning_step in range(LEARNING_STEPS):
     g_loss_history += bagan_gp.history.history['g_loss']
     if (learning_step+1) % eval_step_interval == 0:
         plt_img(bagan_gp.generator, learning_step)
+
+# Save trained embedding and generator models
+em.save("embedding.h5")
+g_model.save("generator.h5")
 
 ############################# Display performance #############################
 # plot loss of G and D
