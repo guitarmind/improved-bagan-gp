@@ -79,7 +79,7 @@ for folder in os.listdir(dataset_folder):
             dataset_inputs[f"{folder}-{part_id}"] = input_img
 
 imgs = []
-lables = []
+labels = []
 for key, input_image in dataset_inputs.items():
 
     if key in dataset_labels:
@@ -100,7 +100,7 @@ for key, input_image in dataset_inputs.items():
 
         imgs.append(input_image)
         # 0 as rare class in the paper
-        lables.append(0)
+        labels.append(0)
     else:
         y_center = round(input_image.shape[0] / 2)
 
@@ -112,10 +112,10 @@ for key, input_image in dataset_inputs.items():
         assert input_image.shape == (target_size, target_size)
 
         imgs.append(input_image)
-        lables.append(1)
+        labels.append(1)
 
 imgs = np.array(imgs)
-lables = np.array(lables)
+labels = np.array(labels)
 
 
 # Splitting
