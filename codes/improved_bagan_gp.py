@@ -600,7 +600,7 @@ LEARNING_STEPS = GAN_LEARNING_STEPS
 for learning_step in range(LEARNING_STEPS):
     print('LEARNING STEP # ', learning_step + 1, '-' * 50)
     bagan_gp.fit(x_train, y_train, batch_size=GAN_batch_size,
-                 epochs=GAN_batch_size)
+                 epochs=GAN_epochs)
     d_loss_history += bagan_gp.history.history['d_loss']
     g_loss_history += bagan_gp.history.history['g_loss']
     if (learning_step+1) % 1 == 0:
