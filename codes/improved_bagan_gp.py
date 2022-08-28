@@ -109,11 +109,13 @@ def decoder():
 
     noise_le = Input((latent_dim,))
 
-    x = Dense(4*4*256)(noise_le)
+    input_size = 4*(target_size//64)
+
+    x = Dense(input_size*input_size*256)(noise_le)
     x = LeakyReLU(alpha=0.2)(x)
 
     # Size: 4 x 4 x 256
-    x = Reshape((4, 4, 256))(x)
+    x = Reshape((input_size, input_size, 256))(x)
 
     # Size: 8 x 8 x 128
     x = Conv2DTranspose(filters=128,
@@ -154,6 +156,8 @@ def encoder():
 
     x = Conv2D(64, kernel_size=(4, 4), strides=(2, 2),
                padding='same', kernel_initializer=init)(img)
+    # x = Conv2D(64, kernel_size=(4, 4), strides=(2, 2),
+    #            padding='same', kernel_initializer=init)(img)
     # x = LayerNormalization()(x) # It is not suggested to use BN in
     # Discriminator of WGAN
     x = LeakyReLU(0.2)(x)
@@ -178,6 +182,7 @@ def encoder():
     # x = Dropout(0.3)(x)
 
     # 4 x 4 x 256
+    # 8 x 8 x 256 for (128, 128)
     feature = Flatten()(x)
 
     feature = Dense(latent_dim)(feature)
@@ -247,18 +252,21 @@ for i in range(n):
     # display original
     ax = plt.subplot(2, n, i+1)
     if channel == 3:
-        plt.imshow(x_real[y_test == i][0].reshape(64, 64, channel))
+        plt.imshow(x_real[y_test == i][0].reshape(
+            target_size, target_size, channel))
     else:
-        plt.imshow(x_real[y_test == i][0].reshape(64, 64))
+        plt.imshow(x_real[y_test == i][0].reshape(target_size, target_size))
         plt.gray()
     ax.get_xaxis().set_visible(False)
     ax.get_yaxis().set_visible(False)
     # display reconstruction
     ax = plt.subplot(2, n, i + n + 1)
     if channel == 3:
-        plt.imshow(decoded_imgs[y_test == i][0].reshape(64, 64, channel))
+        plt.imshow(decoded_imgs[y_test == i][0].reshape(
+            target_size, target_size, channel))
     else:
-        plt.imshow(decoded_imgs[y_test == i][0].reshape(64, 64))
+        plt.imshow(decoded_imgs[y_test == i][
+                   0].reshape(target_size, target_size))
         plt.gray()
     ax.get_xaxis().set_visible(False)
     ax.get_yaxis().set_visible(False)
