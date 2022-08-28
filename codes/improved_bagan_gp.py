@@ -34,29 +34,29 @@ def change_image_shape(images):
     return images
 
 ######################## MNIST / CIFAR ##########################
-# # Load MNIST Fashion
-from tensorflow.keras.datasets.fashion_mnist import load_data
-# # Load CIFAR-10
-# from tensorflow.keras.datasets.cifar10 import load_data
+# # # Load MNIST Fashion
+# from tensorflow.keras.datasets.fashion_mnist import load_data
+# # # Load CIFAR-10
+# # from tensorflow.keras.datasets.cifar10 import load_data
 
-# # Load training set
-(images, labels), (_,_) = load_data()
-images = change_image_shape(images)
+# # # Load training set
+# (images, labels), (_,_) = load_data()
+# images = change_image_shape(images)
 
-labels = labels.reshape(-1)
-# # # Convert from ints to floats
-# # images = images.astype('float32')
+# labels = labels.reshape(-1)
+# # # # Convert from ints to floats
+# # # images = images.astype('float32')
 
-# Create imbalanced version
-for c in range(1, 10):
-    images = np.vstack([images[labels!=c], images[labels==c][:100*c]])
-    labels = np.append(labels[labels!=c], np.ones(100*c) * c)
+# # Create imbalanced version
+# for c in range(1, 10):
+#     images = np.vstack([images[labels!=c], images[labels==c][:100*c]])
+#     labels = np.append(labels[labels!=c], np.ones(100*c) * c)
 
 ######################## Our Dataset ##########################
 # # Use our datasets
-# images = np.load('x_train.npy')
-# labels = np.load('y_train.npy')
-# images = change_image_shape(images)
+images = np.load('x_train.npy')
+labels = np.load('y_train.npy')
+images = change_image_shape(images)
 
 ######################## Preprocessing ##########################
 # Set channel
